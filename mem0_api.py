@@ -13,7 +13,7 @@ memory = Memory.from_config({
     "vector_store": {
         "provider": "chroma",
         "config": {
-            "persist_directory": PERSIST_DIR
+            "path": PERSIST_DIR
         }
     },
     "version": "v1.1"
