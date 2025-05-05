@@ -28,7 +28,7 @@ class ChatInput(BaseModel):
 # Get a memory from the database
 @app.get("/get_memory")
 def get_memory(message: str):
-    return memory.search(query=message, user_id="default_user", limit=1)
+    return memory.search(query=message, user_id="default_user")
 
 # Add a memory to the database
 @app.post("/add_memory")
