@@ -20,7 +20,8 @@ memory = Memory.from_config({
     "version": "v2",
     "llm": {
         "provider": "openai",
-        "config": {}
+        "config": {},
+        "model": "gpt-4.1-mini-2025-04-14"
     }
 })
 
