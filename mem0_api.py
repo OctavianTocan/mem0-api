@@ -38,7 +38,7 @@ def get_memory(chat: ChatInput, limit: int = 1):
 
 @app.post("/add_memory")
 def add_memory(chat: ChatInput):
-    memory.add(chat.message, user_id=chat.user_id)
+    memory.add(chat.message, user_id=chat.user_id, infer=False)
     return {"status": "memory added"}
 
 @app.delete("/delete_memory")
