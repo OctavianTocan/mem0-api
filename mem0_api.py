@@ -24,20 +24,19 @@ def get_memory(chat: ChatInput):
     return memory.search(
         query=chat.message,
         user_id=chat.user_id,
-        limit=1,
-        version="v2"
+        limit=1
     )
 
 @app.post("/add_memory")
 def add_memory(chat: ChatInput):
-    memory.add(chat.message, user_id=chat.user_id, version="v2")
+    memory.add(chat.message, user_id=chat.user_id)
     return {"status": "memory added"}
 
 @app.delete("/delete_memory")
 def delete_memory(chat: ChatInput):
-    memory.delete(chat.message, user_id=chat.user_id, version="v2")
+    memory.delete(chat.message, user_id=chat.user_id)
     return {"status": "memory deleted"}
 
 @app.get("/get_all_memories")
 def get_all_memories(user_id: str = "default_user"):
-    return memory.get_all(user_id=user_id, version="v2")
+    return memory.get_all(user_id=user_id)
