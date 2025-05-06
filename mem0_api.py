@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from mem0 import Memory
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # DEFAULT_USER_ID
 DEFAULT_USER_ID = "default_user_id"
@@ -15,7 +17,11 @@ memory = Memory.from_config({
         "provider": "chroma",
         "config": { "path": PERSIST_DIR }
     },
-    "version": "v2"
+    "version": "v2",
+    "llm": {
+        "provider": "openai",
+        "config": {}
+    }
 })
 
 class ChatInput(BaseModel):
