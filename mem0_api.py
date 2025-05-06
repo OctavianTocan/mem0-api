@@ -12,7 +12,7 @@ memory = Memory.from_config({
         "provider": "chroma",
         "config": { "path": PERSIST_DIR }
     },
-    "version": "v1.1"
+    "version": "v2"
 })
 
 class ChatInput(BaseModel):
@@ -24,19 +24,20 @@ def get_memory(chat: ChatInput):
     return memory.search(
         query=chat.message,
         user_id=chat.user_id,
-        limit=1
+        limit=1,
+        version="v2"
     )
 
 @app.post("/add_memory")
 def add_memory(chat: ChatInput):
-    memory.add(chat.message, user_id=chat.user_id)
+    memory.add(chat.message, user_id=chat.user_id, version="v2")
     return {"status": "memory added"}
 
 @app.delete("/delete_memory")
 def delete_memory(chat: ChatInput):
-    memory.delete(chat.message, user_id=chat.user_id)
+    memory.delete(chat.message, user_id=chat.user_id, version="v2")
     return {"status": "memory deleted"}
 
 @app.get("/get_all_memories")
 def get_all_memories(user_id: str = "default_user"):
-    return memory.get_all(user_id=user_id)
+    return memory.get_all(user_id=user_id, version="v2")
