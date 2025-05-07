@@ -94,11 +94,11 @@ def add_memory(chat: ChatInput):
         categories = get_categories(chat.message)
         print(f"Generated categories: {categories}")
         
-        # Add the memory with categories in metadata as JSON string
+        # Add the memory with categories as a comma-separated string
         result = memory.add(
             messages=chat.message,
             user_id=chat.user_id,
-            metadata=json.dumps({"categories": categories}),
+            metadata={"categories": ", ".join(categories)},
             infer=False
         )
         print(f"Memory added successfully: {result}")
