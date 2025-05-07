@@ -88,17 +88,24 @@ def get_categories(content: str) -> List[str]:
 
 @app.post("/add_memory")
 def add_memory(chat: ChatInput):
-    # Get categories for the memory
-    categories = get_categories(chat.message)
-    
-    # Add the memory with categories in metadata
-    memory.add(
-        content=chat.message,
-        user_id=chat.user_id,
-        metadata={"categories": categories},
-        infer=False
-    )
-    return {"status": "memory added", "categories": categories}
+    try:
+        print(f"Adding memory: {chat.message}")
+        # Get categories for the memory
+        categories = get_categories(chat.message)
+        print(f"Generated categories: {categories}")
+        
+        # Add the memory with categories in metadata
+        result = memory.add(
+            content=chat.message,
+            user_id=chat.user_id,
+            metadata={"categories": categories},
+            infer=False
+        )
+        print(f"Memory added successfully: {result}")
+        return {"status": "memory added", "categories": categories}
+    except Exception as e:
+        print(f"Error in add_memory: {str(e)}")
+        return {"status": "error", "message": str(e)}, 500
 
 @app.delete("/delete_memory")
 def delete_memory(chat: ChatInput):
