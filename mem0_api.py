@@ -87,7 +87,7 @@ def get_categories(content: str) -> List[str]:
         return ["general"]
 
 @app.post("/add_memory")
-def add_memory(chat: ChatInput):
+def add_memory(chat: ChatInput, infer: bool = False):
     try:
         print(f"Adding memory: {chat.message}")
         # Get categories for the memory
@@ -99,13 +99,18 @@ def add_memory(chat: ChatInput):
             messages=chat.message,
             user_id=chat.user_id,
             metadata={"categories": ", ".join(categories)},
-            infer=False
+            infer=infer
         )
         print(f"Memory added successfully: {result}")
         return {"status": "memory added", "categories": categories}
     except Exception as e:
         print(f"Error in add_memory: {str(e)}")
         return {"status": "error", "message": str(e)}, 500
+    
+# Add memory with inference. Useful for testing.
+@app.post("/add_memory_infer")
+def add_memory_infer(chat: ChatInput):
+    return add_memory(chat, infer=True)
 
 @app.delete("/delete_memory")
 def delete_memory(chat: ChatInput):
