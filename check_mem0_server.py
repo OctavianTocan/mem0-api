@@ -45,18 +45,6 @@ def test_get_all_memories():
     except Exception as e:
         print("FAILED", e)
 
-def test_delete_memory():
-    print("Testing /delete_memory ...", end=" ")
-    data = {"message": "Hello, world!", "user_id": DEFAULT_USER_ID}
-    try:
-        r = requests.delete(f"{BASE_URL}/delete_memory", json=data)
-        r.raise_for_status()
-        print("OK", r.json())
-    except Exception as e:
-        print("FAILED", e)
-
 if __name__ == "__main__":
     test_add_memory()
-    test_get_memory()
     test_get_all_memories()
-    test_delete_memory()

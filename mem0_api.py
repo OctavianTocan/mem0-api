@@ -96,7 +96,7 @@ def add_memory(chat: ChatInput):
         
         # Add the memory with categories in metadata
         result = memory.add(
-            content=chat.message,
+            messages=chat.message,
             user_id=chat.user_id,
             metadata={"categories": categories},
             infer=False
