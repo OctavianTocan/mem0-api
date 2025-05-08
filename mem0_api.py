@@ -88,6 +88,10 @@ def get_categories(content: str) -> List[str]:
 
 @app.post("/add_memory")
 def add_memory(chat: ChatInput, infer: bool = False):
+    # If user_id is empty, use default_user_id. We can't have empty user_id.
+    if(chat.user_id == ""):
+        chat.user_id = DEFAULT_USER_ID
+    
     try:
         print(f"Adding memory: {chat.message}")
         # Get categories for the memory
