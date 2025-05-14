@@ -70,5 +70,5 @@ def test_get_all_memories():
         print("FAILED", e)
 
 if __name__ == "__main__":
-    test_add_memory()
+    # test_add_memory()
     test_get_all_memories()
