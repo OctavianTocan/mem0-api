@@ -1,133 +1,230 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException, Depends
 from pydantic import BaseModel
 from mem0 import Memory
 from typing import List, Dict, Any
 import os
-import json
-import openai
+import logging
 from dotenv import load_dotenv
+
+# Load environment variables
 load_dotenv()
 
-# Initialize OpenAI client
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# region Logging
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+# endregion Logging
 
-# Memory categories
-MEMORY_CATEGORIES = [
-    "general",
-    "personal",
-    "work",
-    "education",
-    "health",
-    "finance",
-    "ideas",
-    "projects",
-    "meetings",
-    "important"
-]
+# Initialize OpenAI client
+MEMORY_API_KEY = os.getenv("MEMORY_API_KEY")
+MEMORY_SEARCH_LIMIT = os.getenv("MEMORY_SEARCH_LIMIT", 100)
+DB_COLLECTION_NAME = os.getenv("DB_COLLECTION_NAME", "mem0")
+
+# LLM and Embedder configuration
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
+LLM_MODEL = os.getenv("LLM_MODEL", "models/gemini-2.5-flash")
+LLM_MAX_TOKENS = os.getenv("LLM_MAX_TOKENS", 2000)
+
+# Embedder configuration
+EMBEDDER_PROVIDER = os.getenv("EMBEDDER_PROVIDER", "gemini")
+EMBEDDER_MODEL = os.getenv("EMBEDDER_MODEL", "models/text-embedding-004")
+EMBEDDER_DIMENSIONS = os.getenv("EMBEDDER_DIMENSIONS", 768)
+
+# Database configuration
+DATABASE_PROVIDER = os.getenv("DATABASE_PROVIDER", "redis")
+REDIS_URL = os.getenv("REDIS_URL", "redis://default:IItjAwTwSRcRqOSRBFPOXgKttpvjNDoL@redis-stack.railway.internal:6379")
+
+# Graph provider configuration
+GRAPH_PROVIDER_URL = os.getenv("GRAPH_PROVIDER_URL", "neo4j://69.62.122.245:7687")
+GRAPH_PROVIDER_USERNAME = os.getenv("GRAPH_PROVIDER_USERNAME", "Tavi")
+GRAPH_PROVIDER_PASSWORD = os.getenv("GRAPH_PROVIDER_PASSWORD", "Password123")
 
 # DEFAULT_USER_ID
-DEFAULT_USER_ID = "default_user_id"
+DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
+DEFAULT_AGENT_ID = os.getenv("DEFAULT_AGENT_ID", "default-agent-id")
 
 app = FastAPI()
-PERSIST_DIR = "./memories"
-os.makedirs(PERSIST_DIR, exist_ok=True)
 
-memory = Memory.from_config({
+# API key verification. If the API key is not valid, raise a 401 Unauthorized error.
+def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> None:
+    if x_api_key != MEMORY_API_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+# region Memory Configuration
+memory_config = {
     "vector_store": {
-        "provider": "chroma",
-        "config": { "path": PERSIST_DIR }
+        "provider": DATABASE_PROVIDER,
+        "config": {
+            "collection_name": DB_COLLECTION_NAME,
+            "embedding_model_dims": EMBEDDER_DIMENSIONS,
+            "redis_url": REDIS_URL
+        }
+    },
+    "graph_store": {
+        "provider": "neo4j",
+        "config": {
+            "url": GRAPH_PROVIDER_URL,
+            "username": GRAPH_PROVIDER_USERNAME,
+            "password": GRAPH_PROVIDER_PASSWORD
+        }
     },
     "version": "v2",
     "llm": {
-        "provider": "openai",
-        "model": "gpt-4.1-nano"
+        "provider": LLM_PROVIDER,
+        "model": LLM_MODEL,
+        "max_tokens": LLM_MAX_TOKENS
+    },
+    "embedder": {
+        "provider": EMBEDDER_PROVIDER,
+        "config": {
+            "model": EMBEDDER_MODEL
+        }
     }
-})
+}
+# endregion Memory Configuration
 
-class ChatInput(BaseModel):
-    message: str
+# Initialize memory
+memory = Memory.from_config(memory_config)
+
+class SearchInput(BaseModel):
+    query: str
     user_id: str = DEFAULT_USER_ID
+    agent_id: str = DEFAULT_AGENT_ID
 
-@app.post("/get_memory")
-def get_memory(chat: ChatInput, limit: int = 1):
-    return memory.search(
-        query=chat.message,
-        user_id=chat.user_id,
-        limit=limit
-    )
+"""
+[
+  {
+    "role": "user",
+    "content": {{$('Actual User Message').item.json.chatInput.toJsonString()}}
+  },
+  {
+    "role": "assistant",
+    "content": {{$('AI Agent').item.json.output.toJsonString()}}
+  }
+]
+"""
+class AddMemoryInput(BaseModel):
+    messages: List[Dict[str, str]]
+    user_id: str = DEFAULT_USER_ID
+    agent_id: str = DEFAULT_AGENT_ID
+    infer: bool = True
+    metadata: Dict[str, Any] = {}
+    
+# Super simple ping endpoint.
+@app.post("/ping")
+def ping():
+    return "pong", 200
+    
 
-def get_categories(content: str) -> List[str]:
+@app.post("/search_memory")
+def search_memory(
+    search: SearchInput,
+    x_api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
     """
-    Use OpenAI to categorize the memory content based on predefined categories.
-    Returns a list of relevant categories.
+    Search for memories based on the query.
     """
     try:
-        response = openai.chat.completions.create(
-            model="gpt-4.1-nano",
-            messages=[
-                {"role": "system", "content": f"""
-                You are a helpful assistant that categorizes memories. 
-                For the given memory content, return a JSON array of 1-3 most relevant categories.
-                Only use these categories: {', '.join(MEMORY_CATEGORIES)}.
-                If no category fits, use ["general"].
-                """},
-                {"role": "user", "content": content}
-            ],
-            temperature=0.3,
-            max_tokens=50
+        logger.info(f"Searching for memories using query: {search.query}")
+        logger.info(f"User ID: {search.user_id}, Agent ID: {search.agent_id}")
+        
+        result = memory.search(
+            query=search.query,
+            user_id=search.user_id,
+            agent_id=search.agent_id,
+            limit=MEMORY_SEARCH_LIMIT
         )
         
-        # Parse the response
-        categories = json.loads(response.choices[0].message.content)
-        if not isinstance(categories, list):
-            categories = [categories]
-        return categories
+        logger.info(f"Found {len(result.get('results', []))} memories")
+        logger.info(f"Search results: {result}")
+        return result
     except Exception as e:
-        print(f"Error categorizing memory: {e}")
-        return ["general"]
+        logger.error(f"Error in search_memory: {str(e)}")
+        return {"status": "error", "message": str(e), "results": []}
 
 @app.post("/add_memory")
-def add_memory(chat: ChatInput, infer: bool = False):
-    # If user_id is empty, use default_user_id. We can't have empty user_id.
-    if(chat.user_id == ""):
-        chat.user_id = DEFAULT_USER_ID
-    
+def add_memory(
+    add_memory: AddMemoryInput,
+    x_api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
     try:
-        print(f"Adding memory: {chat.message}")
-        # Get categories for the memory
-        categories = get_categories(chat.message)
-        print(f"Generated categories: {categories}")
+        logger.info(f"Adding memories for user: {add_memory.user_id}")
+        logger.info(f"Agent ID: {add_memory.agent_id}")
+        logger.info(f"Infer mode: {add_memory.infer}")
+        logger.info(f"Messages: {add_memory.messages}")
+        logger.info(f"Metadata: {add_memory.metadata}")
         
-        # Add the memory with categories as a comma-separated string
+
         result = memory.add(
-            messages=chat.message,
-            user_id=chat.user_id,
-            metadata={"categories": ", ".join(categories)},
-            infer=infer
+            add_memory.messages, 
+            user_id=add_memory.user_id, 
+            agent_id=add_memory.agent_id,
+            infer=add_memory.infer,
+            metadata=add_memory.metadata
         )
-        print(f"Memory added successfully: {result}")
-        return {"status": "memory added", "categories": categories}
+        
+        logger.info(f"Memories added successfully: {result}")
+        
+        # Log what memories were actually created
+        if 'results' in result:
+            for mem in result['results']:
+                logger.info(f"Memory created: {mem}")
+        
+        return {"status": "memory added", "result": result}
     except Exception as e:
-        print(f"Error in add_memory: {str(e)}")
-        return {"status": "error", "message": str(e)}, 500
-    
-# Add memory with inference. Useful for testing.
-@app.post("/add_memory_infer")
-def add_memory_infer(chat: ChatInput):
-    return add_memory(chat, infer=True)
+        logger.error(f"Error in add_memory: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
-@app.delete("/delete_memory")
-def delete_memory(chat: ChatInput):
-    memory.delete(chat.message, user_id=chat.user_id)
-    return {"status": "memory deleted"}
+def get_all_memories(
+    user_id: str = DEFAULT_USER_ID,
+    x_api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
+    try:
+        logger.info(f"Getting all memories for user: {user_id}")
+        result = memory.get_all(user_id=user_id)
+        logger.info(f"Found {len(result)} total memories")
+        
+        return {"status": "success", "memories": result, "count": len(result)}
+    except Exception as e:
+        logger.error(f"Error in get_all_memories: {str(e)}")
+        return {"status": "error", "message": str(e), "memories": []}
 
-@app.get("/get_memory_categories", response_model=List[str])
-def get_memory_categories():
+@app.post("/delete_all_memories")
+def delete_all_memories(
+    x_api_key: str = Depends(verify_api_key)
+) -> dict[str, str]:
+    try:
+        logger.info("Deleting all memories")
+        memory.reset()
+        logger.info("All memories deleted successfully")
+        return {"status": "memory deleted"}
+    except Exception as e:
+        logger.error(f"Error in delete_all_memories: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+# region Debugging
+@app.get("/debug_memory_stats")
+def debug_memory_stats(
+    user_id: str = DEFAULT_USER_ID,
+    x_api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
     """
-    Get a list of all possible categories that can be assigned to a memory.
+    Debug endpoint to check memory system status
     """
-    return MEMORY_CATEGORIES
-
-@app.get("/get_all_memories")
-def get_all_memories(user_id: str = DEFAULT_USER_ID):
-    return memory.get_all(user_id=user_id)
+    try:
+        all_memories = memory.get_all(user_id=user_id)
+        
+        stats = {
+            "user_id": user_id,
+            "total_memories": len(all_memories),
+            "embedding_dimensions": EMBEDDER_DIMENSIONS,
+            "llm_model": LLM_MODEL,
+            "embedder_model": EMBEDDER_MODEL,
+            "memories_preview": all_memories[:5] if all_memories else []
+        }
+        
+        return stats
+    except Exception as e:
+        logger.error(f"Error in debug_memory_stats: {str(e)}")
+        return {"status": "error", "message": str(e)}
+# endregion Debugging

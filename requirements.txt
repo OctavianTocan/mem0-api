@@ -1,5 +1,8 @@
 fastapi
 uvicorn
-mem0ai
+mem0ai[graph]
 openai
 chromadb
+google-generativeai
+redis
+redisvl
