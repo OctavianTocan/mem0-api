@@ -3,6 +3,6 @@ uvicorn
 mem0ai[graph]
 openai
 chromadb
-google-generativeai
+google-genai
 redis
 redisvl
