@@ -6,3 +6,4 @@ chromadb
 redis
 redisvl
 google-genai
+google-generativeai
