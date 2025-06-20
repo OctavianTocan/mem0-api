@@ -175,6 +175,7 @@ def add_memory(
         logger.error(f"Error in add_memory: {str(e)}")
         return {"status": "error", "message": str(e)}
 
+@app.get("/get_all_memories")
 def get_all_memories(
     user_id: str = DEFAULT_USER_ID,
     x_api_key: str = Depends(verify_api_key)
