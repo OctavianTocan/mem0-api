@@ -39,9 +39,9 @@ REDIS_URL = os.getenv(
 
 # Graph provider configuration
 GRAPH_PROVIDER_URL = os.getenv("GRAPH_PROVIDER_URL",
-                               "neo4j://69.62.122.245:7687")
-GRAPH_PROVIDER_USERNAME = os.getenv("GRAPH_PROVIDER_USERNAME", "Tavi")
-GRAPH_PROVIDER_PASSWORD = os.getenv("GRAPH_PROVIDER_PASSWORD", "Password123")
+                              )
+GRAPH_PROVIDER_USERNAME = os.getenv("GRAPH_PROVIDER_USERNAME")
+GRAPH_PROVIDER_PASSWORD = os.getenv("GRAPH_PROVIDER_PASSWORD")
 
 # DEFAULT_USER_ID
 DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
