@@ -60,14 +60,6 @@ memory_config = {
             "redis_url": REDIS_URL
         }
     },
-    "graph_store": {
-        "provider": "neo4j",
-        "config": {
-            "url": GRAPH_PROVIDER_URL,
-            "username": GRAPH_PROVIDER_USERNAME,
-            "password": GRAPH_PROVIDER_PASSWORD
-        }
-    },
     "version": "v2",
     "llm": {
         "provider": LLM_PROVIDER,
@@ -81,6 +73,17 @@ memory_config = {
         }
     }
 }
+
+# Add graph configuration only if GRAPH_PROVIDER_URL is set
+if GRAPH_PROVIDER_URL and GRAPH_PROVIDER_USERNAME and GRAPH_PROVIDER_PASSWORD:
+    memory_config["graph_store"] = {
+        "provider": "neo4j",
+        "config": {
+            "url": GRAPH_PROVIDER_URL,
+            "username": GRAPH_PROVIDER_USERNAME,
+            "password": GRAPH_PROVIDER_PASSWORD
+        }
+    }
 # endregion Memory Configuration
 
 # Initialize memory
