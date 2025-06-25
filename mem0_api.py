@@ -32,14 +32,10 @@ EMBEDDER_DIMENSIONS = os.getenv("EMBEDDER_DIMENSIONS", 768)
 
 # Database configuration
 DATABASE_PROVIDER = os.getenv("DATABASE_PROVIDER", "redis")
-REDIS_URL = os.getenv(
-    "REDIS_URL",
-    "redis://default:IItjAwTwSRcRqOSRBFPOXgKttpvjNDoL@redis-stack.railway.internal:6379"
-)
+REDIS_URL = os.getenv("REDIS_URL")
 
 # Graph provider configuration
-GRAPH_PROVIDER_URL = os.getenv("GRAPH_PROVIDER_URL",
-                              )
+GRAPH_PROVIDER_URL = os.getenv("GRAPH_PROVIDER_URL", )
 GRAPH_PROVIDER_USERNAME = os.getenv("GRAPH_PROVIDER_USERNAME")
 GRAPH_PROVIDER_PASSWORD = os.getenv("GRAPH_PROVIDER_PASSWORD")
 
@@ -75,8 +71,7 @@ memory_config = {
     "embedder": {
         "provider": EMBEDDER_PROVIDER,
         "config": {
-            "model": EMBEDDER_MODEL,
-            "embedding_dims": EMBEDDER_DIMENSIONS
+            "model": EMBEDDER_MODEL
         }
     }
 }
