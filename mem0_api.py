@@ -71,7 +71,8 @@ memory_config = {
     "embedder": {
         "provider": EMBEDDER_PROVIDER,
         "config": {
-            "model": EMBEDDER_MODEL
+            "model": EMBEDDER_MODEL,
+            "embedding_dims": EMBEDDER_DIMENSIONS
         }
     }
 }
