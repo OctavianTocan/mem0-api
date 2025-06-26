@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from mem0 import Memory
 from typing import List, Dict, Any
 import os
@@ -119,6 +119,24 @@ class AddMemoryInput(BaseModel):
     agent_id: str = DEFAULT_AGENT_ID
     infer: bool = True
     metadata: Dict[str, Any] = {}
+
+    @root_validator(pre=True)
+    def remove_empty_assistant_messages(cls, values):
+        """Filter out assistant messages with empty content."""
+        msgs = values.get("messages", [])
+        if isinstance(msgs, list):
+            filtered = []
+            for m in msgs:
+                if not isinstance(m, dict):
+                    continue
+                role = m.get("role")
+                content = m.get("content", "")
+                if role == "assistant" and (content is None or str(content).strip() == ""):
+                    logger.warning("Ignoring assistant message with empty content")
+                    continue
+                filtered.append(m)
+            values["messages"] = filtered
+        return values
 
 
 # Super simple ping endpoint.
