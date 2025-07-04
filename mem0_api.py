@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
 from pydantic import BaseModel
 from mem0 import Memory
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import os
 import logging
 from dotenv import load_dotenv
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
 MEMORY_API_KEY = os.getenv("MEMORY_API_KEY")
-MEMORY_SEARCH_LIMIT = os.getenv("MEMORY_SEARCH_LIMIT", 100)
+MEMORY_SEARCH_LIMIT = int(os.getenv("MEMORY_SEARCH_LIMIT", 100))
 DB_COLLECTION_NAME = os.getenv("DB_COLLECTION_NAME", "mem0")
 
 # LLM and Embedder configuration
@@ -119,7 +119,10 @@ class AddMemoryInput(BaseModel):
     agent_id: str = DEFAULT_AGENT_ID
     infer: bool = True
     metadata: Dict[str, Any] = {}
+    prompt: Optional[str] = None
 
+# Move TranscriptHandler import here to avoid circular imports
+from memory_utils import TranscriptHandler
 
 # Super simple ping endpoint.
 @app.post("/ping")
@@ -151,34 +154,74 @@ def search_memory(
         return {"status": "error", "message": str(e), "results": []}
 
 
-@app.post("/add_memory")
-def add_memory(
-    add_memory: AddMemoryInput, x_api_key: str = Depends(verify_api_key)
-) -> dict[str, Any]:
+def _add_memory_core(input: AddMemoryInput) -> dict:
+    """Core memory adding logic"""
     try:
-        logger.info(f"Adding memories for user: {add_memory.user_id}")
-        logger.info(f"Agent ID: {add_memory.agent_id}")
-        logger.info(f"Infer mode: {add_memory.infer}")
-        logger.info(f"Messages: {add_memory.messages}")
-        logger.info(f"Metadata: {add_memory.metadata}")
+        logger.info(f"Adding memories for user: {input.user_id}")
+        logger.info(f"Agent ID: {input.agent_id}")
+        logger.info(f"Infer mode: {input.infer}")
+        logger.info(f"Messages: {input.messages}")
+        logger.info(f"Metadata: {input.metadata}")
+        logger.info(f"Prompt: {input.prompt}")
 
-        result = memory.add(add_memory.messages,
-                            user_id=add_memory.user_id,
-                            agent_id=add_memory.agent_id,
-                            infer=add_memory.infer,
-                            metadata=add_memory.metadata)
+        result = memory.add(input.messages,
+                          user_id=input.user_id,
+                          agent_id=input.agent_id,
+                          infer=input.infer,
+                          metadata=input.metadata,
+                          prompt=input.prompt)
 
         logger.info(f"Memories added successfully: {result}")
-
-        # Log what memories were actually created
         if 'results' in result:
             for mem in result['results']:
                 logger.info(f"Memory created: {mem}")
-
         return {"status": "memory added", "result": result}
     except Exception as e:
-        logger.error(f"Error in add_memory: {str(e)}")
+        logger.error(f"Error in _add_memory_core: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+@app.post("/add_memory")
+def add_memory(
+    input: AddMemoryInput, x_api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
+    """Endpoint wrapper for _add_memory_core"""
+    return _add_memory_core(input)
+
+class AddTranscriptInput(BaseModel):
+    transcript: List[Dict[str, str]]
+    user_id: str = DEFAULT_USER_ID
+    agent_id: str = DEFAULT_AGENT_ID
+    metadata: Dict[str, Any] = {}
+    extract_memories: bool = True
+    prompt: Optional[str] = None
+
+@app.post("/add_transcript")
+def add_transcript(
+    input: AddTranscriptInput, 
+    x_api_key: str = Depends(verify_api_key)
+) -> dict:
+    """Add meeting transcript and optionally extract memories"""
+    handler = TranscriptHandler()
+    # Store raw transcript
+    result = handler.store_transcript(
+        input.transcript,
+        input.user_id,
+        input.agent_id,
+        input.metadata
+    )
+    
+    # Optionally extract memories
+    if input.extract_memories:
+        mem_result = handler.extract_memories(
+            input.transcript,
+            input.user_id,
+            input.agent_id,
+            input.metadata,
+            input.prompt
+        )
+        result['extracted_memories'] = mem_result
+    
+    return result
 
 
 def get_all_memories(
@@ -207,33 +250,3 @@ def delete_all_memories(x_api_key: str = Depends(verify_api_key)) -> dict[str,
     except Exception as e:
         logger.error(f"Error in delete_all_memories: {str(e)}")
         return {"status": "error", "message": str(e)}
-
-
-# region Debugging
-@app.get("/debug_memory_stats")
-def debug_memory_stats(
-    user_id: str = DEFAULT_USER_ID,
-    x_api_key: str = Depends(verify_api_key)
-) -> dict[str, Any]:
-    """
-    Debug endpoint to check memory system status
-    """
-    try:
-        all_memories = memory.get_all(user_id=user_id)
-
-        stats = {
-            "user_id": user_id,
-            "total_memories": len(all_memories),
-            "embedding_dimensions": EMBEDDER_DIMENSIONS,
-            "llm_model": LLM_MODEL,
-            "embedder_model": EMBEDDER_MODEL,
-            "memories_preview": all_memories[:5] if all_memories else []
-        }
-
-        return stats
-    except Exception as e:
-        logger.error(f"Error in debug_memory_stats: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-
-# endregion Debugging
