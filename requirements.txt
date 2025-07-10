@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-mem0ai[graph]==0.1.111
+mem0ai[graph]==0.1.114
 openai>=1.33.0
 chromadb
 redis
