@@ -8,6 +8,7 @@ import logging
 from dotenv import load_dotenv
 from models import SearchInput, AddMemoryInput, AddTranscriptInput
 from transcript_handler import TranscriptHandler
+from webapp_server import app as webapp_app
 
 # Load environment variables
 load_dotenv()
@@ -49,24 +50,8 @@ DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
 DEFAULT_AGENT_ID = os.getenv("DEFAULT_AGENT_ID", "default-agent-id")
 
 app = FastAPI()
-
-# Mount static files for the web app at /browser
-# This will serve the built React app from the dist directory
-if os.path.exists("mem0-webapp/dist"):
-    app.mount("/browser", StaticFiles(directory="mem0-webapp/dist"), name="browser")
-
-
-# Serve the web app at /browser
-@app.get("/browser")
-async def serve_browser():
-    """Serve the Mem0 browser web app"""
-    if os.path.exists("mem0-webapp/dist/index.html"):
-        return FileResponse("mem0-webapp/dist/index.html")
-    else:
-        raise HTTPException(
-            status_code=404,
-            detail="Web app not built. Run 'npm run build' in mem0-webapp directory",
-        )
+# Mount the webapp app at the root path.
+app.mount("/", webapp_app)
 
 
 # API key verification. If the API key is not valid, raise a 401 Unauthorized error.
