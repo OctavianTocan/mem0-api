@@ -92,7 +92,7 @@ memory = Memory.from_config(memory_config)
 # Super simple ping endpoint.
 @app.post("/ping")
 def ping():
-    return "pong", 200
+    return {"status": "pong"}
 
 
 @app.post("/search_memory")
