@@ -8,7 +8,6 @@ import logging
 from dotenv import load_dotenv
 from models import SearchInput, AddMemoryInput, AddTranscriptInput
 from transcript_handler import TranscriptHandler
-from webapp_server import app as webapp_app
 
 # Load environment variables
 load_dotenv()
@@ -50,8 +49,6 @@ DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
 DEFAULT_AGENT_ID = os.getenv("DEFAULT_AGENT_ID", "default-agent-id")
 
 app = FastAPI()
-# Mount the webapp app at the root path.
-app.mount("/", webapp_app)
 
 
 # API key verification. If the API key is not valid, raise a 401 Unauthorized error.
