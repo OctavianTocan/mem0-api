@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from mem0 import Memory
 from typing import List, Dict, Any, Optional
 import os
@@ -47,6 +49,24 @@ DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
 DEFAULT_AGENT_ID = os.getenv("DEFAULT_AGENT_ID", "default-agent-id")
 
 app = FastAPI()
+
+# Mount static files for the web app at /browser
+# This will serve the built React app from the dist directory
+if os.path.exists("mem0-webapp/dist"):
+    app.mount("/browser", StaticFiles(directory="mem0-webapp/dist"), name="browser")
+
+
+# Serve the web app at /browser
+@app.get("/browser")
+async def serve_browser():
+    """Serve the Mem0 browser web app"""
+    if os.path.exists("mem0-webapp/dist/index.html"):
+        return FileResponse("mem0-webapp/dist/index.html")
+    else:
+        raise HTTPException(
+            status_code=404,
+            detail="Web app not built. Run 'npm run build' in mem0-webapp directory",
+        )
 
 
 # API key verification. If the API key is not valid, raise a 401 Unauthorized error.

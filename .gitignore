@@ -175,3 +175,7 @@ cython_debug/
 
 # Mem0
 memories
+
+# Webpack
+**/node_modules
+**/dist
