@@ -241,6 +241,7 @@ def add_transcript(
         return {"status": "error", "message": str(e)}
 
 
+@app.post("/get_all_memories")
 def get_all_memories(
     user_id: str = DEFAULT_USER_ID, x_api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
