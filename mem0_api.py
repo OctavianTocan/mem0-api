@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from mem0 import Memory
-from typing import List, Dict, Any, Optional
+from typing import Any
 import os
 import logging
 from dotenv import load_dotenv
@@ -48,7 +47,46 @@ GRAPH_PROVIDER_PASSWORD = os.getenv("GRAPH_PROVIDER_PASSWORD")
 DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
 DEFAULT_AGENT_ID = os.getenv("DEFAULT_AGENT_ID", "default-agent-id")
 
-app = FastAPI()
+app = FastAPI(
+    title="Mem0 API",
+    description="Mem0 API",
+    version="0.1.0",
+    openapi_url="/api/v1/openapi.json",
+    docs_url="/api/v1/docs",
+)
+
+# region -- CORS Configuration --
+
+# Railway provides these environment variables
+railway_static_url = os.getenv("RAILWAY_STATIC_URL")
+railway_public_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+
+allowed_origins = []
+
+# Add custom domains
+if os.getenv("CORS_ORIGINS"):
+    allowed_origins.extend(os.getenv("CORS_ORIGINS").split(","))
+
+# Add Railway domains
+if railway_static_url:
+    allowed_origins.append(f"https://{railway_static_url}")
+if railway_public_domain:
+    allowed_origins.append(f"https://{railway_public_domain}")
+
+# Development origins
+if os.getenv("ENVIRONMENT") != "production":
+    allowed_origins.extend(["http://localhost:3000", "http://127.0.0.1:3000"])
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# endregion -- CORS Configuration --
 
 
 # API key verification. If the API key is not valid, raise a 401 Unauthorized error.
@@ -89,6 +127,11 @@ if GRAPH_PROVIDER_URL and GRAPH_PROVIDER_USERNAME and GRAPH_PROVIDER_PASSWORD:
 
 # Initialize memory
 memory = Memory.from_config(memory_config)
+
+
+@app.get("/")
+def read_root():
+    return {"status": "ok"}
 
 
 # Super simple ping endpoint.
