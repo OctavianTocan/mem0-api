@@ -3,19 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from mem0 import Memory
 from typing import Any
 import os
-import logging
 from dotenv import load_dotenv
-from models import SearchInput, AddMemoryInput, AddTranscriptInput
+from models import SearchInput, AddMemoryInput, AddTranscriptInput, GetAllMemoriesInput
 from transcript_handler import TranscriptHandler
 
 # Load environment variables
 load_dotenv()
-
-# region Logging
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-# endregion Logging
 
 # Initialize OpenAI client
 MEMORY_API_KEY = os.getenv("MEMORY_API_KEY")
@@ -148,8 +141,8 @@ def search_memory(
     Search for memories based on the query.
     """
     try:
-        logger.info(f"Searching for memories using query: {search.query}")
-        logger.info(f"User ID: {search.user_id}, Agent ID: {search.agent_id}")
+        print(f"Searching for memories using query: {search.query}")
+        print(f"User ID: {search.user_id}, Agent ID: {search.agent_id}")
 
         result = memory.search(
             query=search.query,
@@ -158,23 +151,23 @@ def search_memory(
             limit=MEMORY_SEARCH_LIMIT,
         )
 
-        logger.info(f"Found {len(result.get('results', []))} memories")
-        logger.info(f"Search results: {result}")
+        print(f"Found {len(result.get('results', []))} memories")
+        print(f"Search results: {result}")
         return result
     except Exception as e:
-        logger.error(f"Error in search_memory: {str(e)}")
+        print(f"Error in search_memory: {str(e)}")
         return {"status": "error", "message": str(e), "results": []}
 
 
 def _add_memory_core(memory_input: AddMemoryInput) -> dict:
     """Core memory adding logic"""
     try:
-        logger.info(f"Adding memories for user: {memory_input.user_id}")
-        logger.info(f"Agent ID: {memory_input.agent_id}")
-        logger.info(f"Infer mode: {memory_input.infer}")
-        logger.info(f"Messages: {memory_input.messages}")
-        logger.info(f"Metadata: {memory_input.metadata}")
-        logger.info(f"Prompt: {memory_input.prompt}")
+        print(f"Adding memories for user: {memory_input.user_id}")
+        print(f"Agent ID: {memory_input.agent_id}")
+        print(f"Infer mode: {memory_input.infer}")
+        print(f"Messages: {memory_input.messages}")
+        print(f"Metadata: {memory_input.metadata}")
+        print(f"Prompt: {memory_input.prompt}")
 
         result = memory.add(
             memory_input.messages,
@@ -184,14 +177,13 @@ def _add_memory_core(memory_input: AddMemoryInput) -> dict:
             metadata=memory_input.metadata,
             prompt=memory_input.prompt,
         )
-
-        logger.info(f"Memories added successfully: {result}")
+        print(f"Memories added successfully: {result}")
         if "results" in result:
             for mem in result["results"]:
-                logger.info(f"Memory created: {mem}")
+                print(f"Memory created: {mem}")
         return {"status": "memory added", "result": result}
     except Exception as e:
-        logger.error(f"Error in _add_memory_core: {str(e)}")
+        print(f"Error in _add_memory_core: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
@@ -237,32 +229,37 @@ def add_transcript(
 
         return result
     except Exception as e:
-        logger.error(f"Error in add_transcript: {str(e)}")
+        print(f"Error in add_transcript: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 
 @app.post("/get_all_memories")
 def get_all_memories(
-    user_id: str = DEFAULT_USER_ID, x_api_key: str = Depends(verify_api_key)
+    input_data: GetAllMemoriesInput, x_api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     try:
-        logger.info(f"Getting all memories for user: {user_id}")
-        result = memory.get_all(user_id=user_id)
-        logger.info(f"Found {len(result)} total memories")
+        print(f"Getting all memories for user: {input_data.user_id}")
+        result = memory.get_all(user_id=input_data.user_id)
+        print(f"Found {len(result)} total memories")
+
+        #region -- Print all memories --
+        for mem in result:
+            print(f"Memory: {mem}")
+        #endregion
 
         return {"status": "success", "memories": result, "count": len(result)}
     except Exception as e:
-        logger.error(f"Error in get_all_memories: {str(e)}")
+        print(f"Error in get_all_memories: {str(e)}")
         return {"status": "error", "message": str(e), "memories": []}
 
 
 @app.post("/delete_all_memories")
 def delete_all_memories(x_api_key: str = Depends(verify_api_key)) -> dict[str, str]:
     try:
-        logger.info("Deleting all memories")
+        print("Deleting all memories")
         memory.reset()
-        logger.info("All memories deleted successfully")
+        print("All memories deleted successfully")
         return {"status": "memory deleted"}
     except Exception as e:
-        logger.error(f"Error in delete_all_memories: {str(e)}")
+        print(f"Error in delete_all_memories: {str(e)}")
         return {"status": "error", "message": str(e)}
