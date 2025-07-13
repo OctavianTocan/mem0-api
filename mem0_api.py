@@ -5,8 +5,9 @@ from typing import Any
 import os
 import logging
 from dotenv import load_dotenv
-from models import SearchInput, AddMemoryInput, AddTranscriptInput, GetAllMemoriesInput
+from models import SearchInput, AddMemoryInput, AddTranscriptInput, GetAllMemoriesInput, ChatInput
 from transcript_handler import TranscriptHandler
+from agno_service import MemoryEnhancedAgent
 
 # Load environment variables
 load_dotenv()
@@ -126,6 +127,9 @@ if GRAPH_PROVIDER_URL and GRAPH_PROVIDER_USERNAME and GRAPH_PROVIDER_PASSWORD:
 
 # Initialize memory
 memory = Memory.from_config(memory_config)
+
+# Initialize memory-enhanced Agno agent
+memory_agent = MemoryEnhancedAgent(memory, LLM_MODEL)
 
 
 @app.get("/")
@@ -265,3 +269,34 @@ def delete_all_memories(x_api_key: str = Depends(verify_api_key)) -> dict[str, s
     except Exception as e:
         logger.error(f"Error in delete_all_memories: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+
+@app.post("/chat_with_memory")
+def chat_with_memory(
+    chat_input: ChatInput, x_api_key: str = Depends(verify_api_key)
+) -> dict[str, Any]:
+    """
+    Chat with memory-enhanced Agno agent that can access and use stored memories.
+    """
+    try:
+        # Use default values if not provided
+        user_id = chat_input.user_id or DEFAULT_USER_ID
+        agent_id = chat_input.agent_id or DEFAULT_AGENT_ID
+        
+        logger.info(f"Processing chat request for user: {user_id}, agent: {agent_id}")
+        logger.info(f"Query: {chat_input.query}")
+        
+        result = memory_agent.chat_with_memory(
+            query=chat_input.query,
+            user_id=user_id,
+            agent_id=agent_id,
+            store_conversation=chat_input.store_conversation,
+            metadata=chat_input.metadata
+        )
+        
+        logger.info(f"Chat completed successfully")
+        return {"status": "success", **result}
+        
+    except Exception as e:
+        logger.error(f"Error in chat_with_memory: {str(e)}")
+        return {"status": "error", "message": str(e), "response": None}

@@ -44,3 +44,16 @@ class AddTranscriptInput(BaseModel):
 class GetAllMemoriesInput(BaseModel):
     # The ID of the user whose memories are to be retrieved, defaults to DEFAULT_USER_ID
     user_id: str
+
+
+class ChatInput(BaseModel):
+    # The chat query/message from the user
+    query: str
+    # The ID of the user sending the message, defaults to DEFAULT_USER_ID
+    user_id: Optional[str] = None
+    # Optional ID of the agent associated with the chat
+    agent_id: Optional[str] = None
+    # Boolean indicating whether to store the conversation in memory
+    store_conversation: bool = True
+    # Optional metadata dictionary for the conversation
+    metadata: Dict[str, Any] = {}
