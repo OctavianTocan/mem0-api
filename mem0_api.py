@@ -5,9 +5,7 @@ from typing import Any
 import os
 import logging
 from dotenv import load_dotenv
-from models import SearchInput, AddMemoryInput, AddTranscriptInput, GetAllMemoriesInput, ChatInput
-from transcript_handler import TranscriptHandler
-from agno_service import MemoryEnhancedAgent
+from models import SearchInput, AddMemoryInput, GetAllMemoriesInput
 
 # Load environment variables
 load_dotenv()
@@ -35,17 +33,6 @@ EMBEDDER_DIMENSIONS = os.getenv("EMBEDDER_DIMENSIONS", 768)
 # Database configuration
 DATABASE_PROVIDER = os.getenv("DATABASE_PROVIDER", "redis")
 REDIS_URL = os.getenv("REDIS_URL")
-
-# Graph provider configuration
-GRAPH_PROVIDER_URL = os.getenv(
-    "GRAPH_PROVIDER_URL",
-)
-GRAPH_PROVIDER_USERNAME = os.getenv("GRAPH_PROVIDER_USERNAME")
-GRAPH_PROVIDER_PASSWORD = os.getenv("GRAPH_PROVIDER_PASSWORD")
-
-# DEFAULT_USER_ID
-DEFAULT_USER_ID = os.getenv("DEFAULT_USER_ID", "default-researcher-id")
-DEFAULT_AGENT_ID = os.getenv("DEFAULT_AGENT_ID", "default-agent-id")
 
 app = FastAPI(
     title="Mem0 API",
@@ -112,24 +99,10 @@ memory_config = {
         "config": {"model": EMBEDDER_MODEL, "embedding_dims": EMBEDDER_DIMENSIONS},
     },
 }
-
-# Add graph configuration only if GRAPH_PROVIDER_URL is set
-if GRAPH_PROVIDER_URL and GRAPH_PROVIDER_USERNAME and GRAPH_PROVIDER_PASSWORD:
-    memory_config["graph_store"] = {
-        "provider": "neo4j",
-        "config": {
-            "url": GRAPH_PROVIDER_URL,
-            "username": GRAPH_PROVIDER_USERNAME,
-            "password": GRAPH_PROVIDER_PASSWORD,
-        },
-    }
 # endregion Memory Configuration
 
 # Initialize memory
 memory = Memory.from_config(memory_config)
-
-# Initialize memory-enhanced Agno agent
-memory_agent = MemoryEnhancedAgent(memory, LLM_MODEL)
 
 
 @app.get("/")
@@ -206,44 +179,6 @@ def add_memory(
     return _add_memory_core(memory_input)
 
 
-@app.post("/add_transcript")
-def add_transcript(
-    memory_input: AddTranscriptInput, x_api_key: str = Depends(verify_api_key)
-) -> dict[str, Any]:
-    """Add meeting transcript and optionally extract memories"""
-    try:
-        handler = TranscriptHandler()
-        result = {"status": "processing"}
-        # Store raw transcript
-        store_input = handler.store_transcript(
-            memory_input.transcript,
-            memory_input.user_id,
-            memory_input.agent_id,
-            memory_input.metadata,
-        )
-        store_result = _add_memory_core(store_input)
-
-        # Store the transcript in the result
-        result["transcript_storage_result"] = store_result
-
-        # Optionally extract memories
-        if memory_input.extract_memories:
-            extract_input = handler.extract_memories(
-                memory_input.transcript,
-                memory_input.user_id,
-                memory_input.agent_id,
-                memory_input.metadata,
-                memory_input.prompt,
-            )
-            extract_result = _add_memory_core(extract_input)
-            result["extracted_memories_result"] = extract_result
-
-        return result
-    except Exception as e:
-        logger.error(f"Error in add_transcript: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-
 @app.post("/get_all_memories")
 def get_all_memories(
     input_data: GetAllMemoriesInput, x_api_key: str = Depends(verify_api_key)
@@ -269,34 +204,3 @@ def delete_all_memories(x_api_key: str = Depends(verify_api_key)) -> dict[str, s
     except Exception as e:
         logger.error(f"Error in delete_all_memories: {str(e)}")
         return {"status": "error", "message": str(e)}
-
-
-@app.post("/chat_with_memory")
-def chat_with_memory(
-    chat_input: ChatInput, x_api_key: str = Depends(verify_api_key)
-) -> dict[str, Any]:
-    """
-    Chat with memory-enhanced Agno agent that can access and use stored memories.
-    """
-    try:
-        # Use default values if not provided
-        user_id = chat_input.user_id or DEFAULT_USER_ID
-        agent_id = chat_input.agent_id or DEFAULT_AGENT_ID
-        
-        logger.info(f"Processing chat request for user: {user_id}, agent: {agent_id}")
-        logger.info(f"Query: {chat_input.query}")
-        
-        result = memory_agent.chat_with_memory(
-            query=chat_input.query,
-            user_id=user_id,
-            agent_id=agent_id,
-            store_conversation=chat_input.store_conversation,
-            metadata=chat_input.metadata
-        )
-        
-        logger.info(f"Chat completed successfully")
-        return {"status": "success", **result}
-        
-    except Exception as e:
-        logger.error(f"Error in chat_with_memory: {str(e)}")
-        return {"status": "error", "message": str(e), "response": None}
