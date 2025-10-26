@@ -7,7 +7,7 @@ redis
 redisvl
 google-genai>=1.0.0
 google-generativeai>=0.3.0
-ollama
+litellm
 pydantic
 python-dotenv
 requests
