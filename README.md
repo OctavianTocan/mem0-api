@@ -345,7 +345,6 @@ docker run -p 8000:8000 --env-file .env mem0-api
 ├── mem0_api.py        # FastAPI application and endpoints
 ├── models.py          # Pydantic request/response models
 ├── pyproject.toml     # Project configuration and dependencies (uv)
-├── requirements.txt   # Legacy pip requirements (for compatibility)
 ├── .python-version    # Python version specification
 ├── start.sh          # Startup script
 └── README.md         # This file
