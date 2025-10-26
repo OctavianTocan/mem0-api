@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from mem0 import Memory
+from mem0 import AsyncMemory
+from mem0.configs.base import MemoryConfig
 from typing import Any
 import os
 import logging
@@ -30,9 +31,12 @@ EMBEDDER_PROVIDER = os.getenv("EMBEDDER_PROVIDER", "gemini")
 EMBEDDER_MODEL = os.getenv("EMBEDDER_MODEL", "models/text-embedding-004")
 EMBEDDER_DIMENSIONS = os.getenv("EMBEDDER_DIMENSIONS", 768)
 
+# Google API Key
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
 # Database configuration
-DATABASE_PROVIDER = os.getenv("DATABASE_PROVIDER", "redis")
-REDIS_URL = os.getenv("REDIS_URL")
+DATABASE_PROVIDER = "chroma"
+CHROMA_PATH = "./chroma_db"
 
 app = FastAPI(
     title="Mem0 API",
@@ -77,7 +81,7 @@ app.add_middleware(
 
 
 # API key verification. If the API key is not valid, raise a 401 Unauthorized error.
-def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> None:
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> None:
     if x_api_key != MEMORY_API_KEY:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -88,36 +92,35 @@ memory_config = {
         "provider": DATABASE_PROVIDER,
         "config": {
             "collection_name": DB_COLLECTION_NAME,
-            "embedding_model_dims": EMBEDDER_DIMENSIONS,
-            "redis_url": REDIS_URL,
+            "path": CHROMA_PATH,
         },
     },
     "version": "v2",
     "llm": {"provider": LLM_PROVIDER, "model": LLM_MODEL, "max_tokens": LLM_MAX_TOKENS},
     "embedder": {
         "provider": EMBEDDER_PROVIDER,
-        "config": {"model": EMBEDDER_MODEL, "embedding_dims": EMBEDDER_DIMENSIONS},
+        "config": {"model": EMBEDDER_MODEL, "embedding_dims": EMBEDDER_DIMENSIONS, "api_key": GOOGLE_API_KEY},
     },
 }
 # endregion Memory Configuration
 
 # Initialize memory
-memory = Memory.from_config(memory_config)
+memory = AsyncMemory(config=MemoryConfig(**memory_config))
 
 
 @app.get("/")
-def read_root():
+async def read_root():
     return {"status": "ok"}
 
 
 # Super simple ping endpoint.
 @app.post("/ping")
-def ping():
+async def ping():
     return {"status": "pong"}
 
 
 @app.post("/search_memory")
-def search_memory(
+async def search_memory(
     search: SearchInput, x_api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     """
@@ -127,7 +130,7 @@ def search_memory(
         logger.info(f"Searching for memories using query: {search.query}")
         logger.info(f"User ID: {search.user_id}, Agent ID: {search.agent_id}")
 
-        result = memory.search(
+        result = await memory.search(
             query=search.query,
             user_id=search.user_id,
             agent_id=search.agent_id,
@@ -142,7 +145,7 @@ def search_memory(
         return {"status": "error", "message": str(e), "results": []}
 
 
-def _add_memory_core(memory_input: AddMemoryInput) -> dict:
+async def _add_memory_core(memory_input: AddMemoryInput) -> dict:
     """Core memory adding logic"""
     try:
         logger.info(f"Adding memories for user: {memory_input.user_id}")
@@ -152,7 +155,7 @@ def _add_memory_core(memory_input: AddMemoryInput) -> dict:
         logger.info(f"Metadata: {memory_input.metadata}")
         logger.info(f"Prompt: {memory_input.prompt}")
 
-        result = memory.add(
+        result = await memory.add(
             memory_input.messages,
             user_id=memory_input.user_id,
             agent_id=memory_input.agent_id,
@@ -172,20 +175,20 @@ def _add_memory_core(memory_input: AddMemoryInput) -> dict:
 
 
 @app.post("/add_memory")
-def add_memory(
+async def add_memory(
     memory_input: AddMemoryInput, x_api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     """Endpoint wrapper for _add_memory_core"""
-    return _add_memory_core(memory_input)
+    return await _add_memory_core(memory_input)
 
 
 @app.post("/get_all_memories")
-def get_all_memories(
+async def get_all_memories(
     input_data: GetAllMemoriesInput, x_api_key: str = Depends(verify_api_key)
 ) -> dict[str, Any]:
     try:
         print(f"Getting all memories for user: {input_data.user_id}")
-        result = memory.get_all(user_id=input_data.user_id)
+        result = await memory.get_all(user_id=input_data.user_id)
         print(f"Found {len(result)} total memories")
 
         return {"status": "success", "memories": result, "count": len(result)}
@@ -195,10 +198,10 @@ def get_all_memories(
 
 
 @app.post("/delete_all_memories")
-def delete_all_memories(x_api_key: str = Depends(verify_api_key)) -> dict[str, str]:
+async def delete_all_memories(x_api_key: str = Depends(verify_api_key)) -> dict[str, str]:
     try:
         logger.info("Deleting all memories")
-        memory.reset()
+        await memory.reset()
         logger.info("All memories deleted successfully")
         return {"status": "memory deleted"}
     except Exception as e:
