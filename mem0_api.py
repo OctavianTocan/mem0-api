@@ -25,7 +25,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 LLM_MODEL = os.getenv("LLM_MODEL", "models/gemini-2.5-flash")
 LLM_MAX_TOKENS = os.getenv("LLM_MAX_TOKENS", 2000)
 
-# Ollama cloud configuration
+# Ollama cloud configuration (via LiteLLM)
 OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE")  # Ollama cloud endpoint
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")  # Ollama cloud API key
 
@@ -87,27 +87,25 @@ def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")) -> None:
 
 
 # region Memory Configuration
-# Build LLM config
-llm_config = {"provider": LLM_PROVIDER, "model": LLM_MODEL, "max_tokens": LLM_MAX_TOKENS}
-if LLM_PROVIDER == "ollama":
-    ollama_config = {}
-    if OLLAMA_API_BASE:
-        ollama_config["api_base"] = OLLAMA_API_BASE
-    if OLLAMA_API_KEY:
-        ollama_config["api_key"] = OLLAMA_API_KEY
-    if ollama_config:
-        llm_config["config"] = ollama_config
+# Build LLM config using LiteLLM for Ollama
+llm_config = {"provider": "litellm", "config": {"model": f"ollama/{LLM_MODEL}", "max_tokens": LLM_MAX_TOKENS}}
+if OLLAMA_API_BASE:
+    llm_config["config"]["api_base"] = OLLAMA_API_BASE
+if OLLAMA_API_KEY:
+    llm_config["config"]["api_key"] = OLLAMA_API_KEY
 
-# Build embedder config
+# Build embedder config using LiteLLM for Ollama
 embedder_config = {
-    "provider": EMBEDDER_PROVIDER,
-    "config": {"model": EMBEDDER_MODEL, "embedding_dims": EMBEDDER_DIMENSIONS},
+    "provider": "litellm",
+    "config": {
+        "model": f"ollama/{EMBEDDER_MODEL}",
+        "embedding_dims": EMBEDDER_DIMENSIONS,
+    },
 }
-if EMBEDDER_PROVIDER == "ollama":
-    if OLLAMA_API_BASE:
-        embedder_config["config"]["api_base"] = OLLAMA_API_BASE
-    if OLLAMA_API_KEY:
-        embedder_config["config"]["api_key"] = OLLAMA_API_KEY
+if OLLAMA_API_BASE:
+    embedder_config["config"]["api_base"] = OLLAMA_API_BASE
+if OLLAMA_API_KEY:
+    embedder_config["config"]["api_key"] = OLLAMA_API_KEY
 
 memory_config = {
     "vector_store": {
