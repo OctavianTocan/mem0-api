@@ -192,11 +192,12 @@ MEMORY_API_KEY=your-secret-api-key
 ```bash
 # LLM Configuration
 LLM_PROVIDER=ollama                          # Options: ollama, gemini, openai (default: gemini)
-LLM_MODEL=llama3.2                           # Model name (default: models/gemini-2.5-flash)
+LLM_MODEL=kimi-k2:1t-cloud                   # Model name (default: models/gemini-2.5-flash)
 LLM_MAX_TOKENS=2000                          # Default: 2000
 
 # Ollama Cloud Configuration (required when using Ollama)
 OLLAMA_API_BASE=https://api.ollama.ai        # Ollama cloud endpoint
+OLLAMA_API_KEY=your-ollama-api-key           # Ollama cloud API key (required)
 
 # Embedder Configuration
 EMBEDDER_PROVIDER=ollama                     # Options: ollama, gemini, openai (default: gemini)
