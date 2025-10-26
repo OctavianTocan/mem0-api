@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # Mem0 API Service
+  mem0-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mem0-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MEMORY_API_KEY=${MEMORY_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_PROVIDER=${DATABASE_PROVIDER:-redis}
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_MODEL=${LLM_MODEL:-models/gemini-2.5-flash}
+      - LLM_MAX_TOKENS=${LLM_MAX_TOKENS:-2000}
+      - EMBEDDER_PROVIDER=${EMBEDDER_PROVIDER:-gemini}
+      - EMBEDDER_MODEL=${EMBEDDER_MODEL:-models/text-embedding-004}
+      - EMBEDDER_DIMENSIONS=${EMBEDDER_DIMENSIONS:-768}
+      - DB_COLLECTION_NAME=${DB_COLLECTION_NAME:-mem0}
+      - MEMORY_SEARCH_LIMIT=${MEMORY_SEARCH_LIMIT:-100}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - mem0-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis Vector Database
+  redis:
+    image: redis:7.2-alpine
+    container_name: mem0-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --appendfsync everysec
+    networks:
+      - mem0-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Ollama LLM Service
+  ollama:
+    image: ollama/ollama:0.5.4
+    container_name: mem0-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - mem0-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+    # Uncomment below for GPU support (NVIDIA)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+networks:
+  mem0-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+  ollama-data:
+    driver: local

@@ -10,6 +10,29 @@ A clean, production-ready FastAPI service for semantic memory management using [
 - **LLM Integration** - Uses Google Gemini for memory inference and embeddings
 - **API Key Authentication** - Secure access with header-based authentication
 - **CORS Support** - Pre-configured for local development and Railway deployment
+- **Docker Support** - Production-ready Docker setup with Redis and Ollama
+
+## Deployment Options
+
+### Docker (Recommended)
+
+The easiest way to run the API with all dependencies:
+
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env and add your MEMORY_API_KEY and GOOGLE_API_KEY
+
+# Start all services (API + Redis + Ollama)
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+The API will be available at `http://localhost:8000`
+
+See [README_DOCKER.md](README_DOCKER.md) for complete Docker documentation, GPU support, and production deployment.
 
 ## Quick Start
 
