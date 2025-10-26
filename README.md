@@ -16,6 +16,7 @@ A clean, production-ready FastAPI service for semantic memory management using [
 ### Prerequisites
 
 - Python 3.9+
+- [uv](https://docs.astral.sh/uv/) package manager
 - Redis (for vector storage) or Chroma
 - Google Gemini API key
 
@@ -29,7 +30,7 @@ cd Mem0-Memory
 
 2. Install dependencies:
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 3. Create a `.env` file:
@@ -41,7 +42,7 @@ cp .env.example .env
 
 5. Start the server:
 ```bash
-uvicorn mem0_api:app --host 0.0.0.0 --port 8000
+uv run uvicorn mem0_api:app --host 0.0.0.0 --port 8000
 ```
 
 Or use the included startup script:
@@ -312,13 +313,21 @@ The API is pre-configured for Railway deployment:
 ```dockerfile
 FROM python:3.11-slim
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+
+# Copy project files
+COPY pyproject.toml .
+COPY .python-version .
+
+# Install dependencies
+RUN uv sync --frozen
 
 COPY . .
 
-CMD ["uvicorn", "mem0_api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "mem0_api:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 Build and run:
@@ -335,7 +344,9 @@ docker run -p 8000:8000 --env-file .env mem0-api
 .
 ├── mem0_api.py        # FastAPI application and endpoints
 ├── models.py          # Pydantic request/response models
-├── requirements.txt   # Python dependencies
+├── pyproject.toml     # Project configuration and dependencies (uv)
+├── requirements.txt   # Legacy pip requirements (for compatibility)
+├── .python-version    # Python version specification
 ├── start.sh          # Startup script
 └── README.md         # This file
 ```
