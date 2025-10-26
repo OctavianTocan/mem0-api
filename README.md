@@ -7,7 +7,7 @@ A clean, production-ready FastAPI service for semantic memory management using [
 - **Semantic Memory Storage** - Store conversations and information with AI-powered inference
 - **Vector Search** - Find relevant memories using semantic similarity
 - **Multiple Backends** - Support for Redis and Chroma vector databases
-- **LLM Integration** - Uses Google Gemini for memory inference and embeddings
+- **LLM Integration** - Support for Ollama Cloud (via LiteLLM), Google Gemini, and OpenAI
 - **API Key Authentication** - Secure access with header-based authentication
 - **CORS Support** - Pre-configured for local development and Railway deployment
 - **Docker Support** - Production-ready Docker setup with Redis and Ollama
@@ -40,7 +40,7 @@ See [README_DOCKER.md](README_DOCKER.md) for complete Docker documentation, GPU 
 
 - Python 3.9+
 - Redis (for vector storage) or Chroma
-- Google Gemini API key
+- LLM API access (Ollama Cloud via LiteLLM, Google Gemini, or OpenAI)
 
 ### Installation
 
@@ -214,13 +214,17 @@ MEMORY_API_KEY=your-secret-api-key
 
 ```bash
 # LLM Configuration
-LLM_PROVIDER=gemini                          # Default: gemini
-LLM_MODEL=models/gemini-2.5-flash           # Default: models/gemini-2.5-flash
+LLM_PROVIDER=litellm                         # Options: litellm, gemini, openai (default: gemini)
+LLM_MODEL=kimi-k2:1t-cloud                   # Model name (default: models/gemini-2.5-flash)
 LLM_MAX_TOKENS=2000                          # Default: 2000
 
+# Ollama Cloud Configuration (via LiteLLM)
+OLLAMA_API_BASE=https://api.ollama.ai        # Ollama cloud endpoint
+OLLAMA_API_KEY=your-ollama-api-key           # Ollama cloud API key (required)
+
 # Embedder Configuration
-EMBEDDER_PROVIDER=gemini                     # Default: gemini
-EMBEDDER_MODEL=models/text-embedding-004     # Default: models/text-embedding-004
+EMBEDDER_PROVIDER=litellm                    # Options: litellm, gemini, openai (default: gemini)
+EMBEDDER_MODEL=nomic-embed-text              # Embedding model (default: models/text-embedding-004)
 EMBEDDER_DIMENSIONS=768                      # Default: 768
 
 # Database Configuration
@@ -316,7 +320,9 @@ FastAPI Application
     ↓
 Mem0 Framework (v1.0.0)
     ↓
-├─ Google Gemini (LLM & Embeddings)
+├─ LiteLLM (Unified LLM Interface)
+│   └─ Ollama Cloud / Gemini / OpenAI
+├─ Embeddings (via LiteLLM)
 └─ Vector Database (Redis/Chroma)
 ```
 
@@ -373,7 +379,8 @@ Access the interactive API documentation at:
 
 - **FastAPI** - Modern Python web framework
 - **Mem0** (v1.0.0) - Memory management framework
-- **Google Gemini** - LLM and embeddings provider
+- **LiteLLM** - Unified interface for LLM providers
+- **Ollama Cloud/Gemini/OpenAI** - LLM and embeddings providers
 - **Redis/Chroma** - Vector database backends
 - **Pydantic** - Data validation
 
@@ -389,7 +396,10 @@ redis-cli ping  # Should return PONG
 Verify your `X-API-Key` header matches `MEMORY_API_KEY` in `.env`
 
 ### Memory Inference Not Working
-Check that your Google Gemini API key is properly configured and has quota
+Check that your LLM provider API key/endpoint is properly configured:
+- **Ollama Cloud (via LiteLLM)**: Verify `OLLAMA_API_BASE` and `OLLAMA_API_KEY` are set correctly
+- **Gemini**: Check your Google Gemini API key and quota
+- **OpenAI**: Verify your OpenAI API key is valid
 
 ## License
 
