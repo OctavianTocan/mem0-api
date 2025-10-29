@@ -15,6 +15,7 @@ AI agents are often stateless. They forget everything after an interaction. This
 You need Python 3.9+ and access to a Redis instance. You will also need an API key from an LLM provider like Google Gemini or OpenAI.
 
 1.  **Clone the repository and install dependencies:**
+
     ```bash
     git clone https://github.com/OctavianTocan/mem0-api.git
     cd mem0-api
@@ -22,6 +23,7 @@ You need Python 3.9+ and access to a Redis instance. You will also need an API k
     ```
 
 2.  **Configure your environment.** Copy the example `.env.example` file to `.env` and fill in the required values. At a minimum, you need to set `MEMORY_API_KEY`.
+
     ```bash
     cp .env.example .env
     ```
@@ -81,9 +83,10 @@ The quality of the semantic search depends heavily on the underlying embedding m
 ## Project Roadmap
 
 This project is under active development. Future plans include:
-*   Support for more vector database backends.
-*   More sophisticated memory analysis and summarization features.
-*   Integration with popular agent frameworks.
+
+- Support for more vector database backends.
+- More sophisticated memory analysis and summarization features.
+- Integration with popular agent frameworks.
 
 Contributions are welcome.
 
