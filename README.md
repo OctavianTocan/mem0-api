@@ -1,393 +1,94 @@
-# Mem0 Memory API
+# Mem0 API
 
-A clean, production-ready FastAPI service for semantic memory management using [Mem0](https://mem0.ai). Store, search, and manage AI agent memories with vector embeddings and LLM-powered inference.
+This project provides a production-ready API for `mem0`, a tool for AI-powered semantic memory management. It allows you to store, search, and manage memories for AI agents using a simple, robust interface.
 
-## Features
+This API is designed for developers who need to give their AI agents a reliable long-term memory. It handles the complexities of vector embeddings and LLM integration, so you can focus on building your agent's logic.
 
-- **Semantic Memory Storage** - Store conversations and information with AI-powered inference
-- **Vector Search** - Find relevant memories using semantic similarity
-- **Multiple Backends** - Support for Redis and Chroma vector databases
-- **LLM Integration** - Support for Ollama Cloud (via LiteLLM), Google Gemini, and OpenAI
-- **API Key Authentication** - Secure access with header-based authentication
-- **CORS Support** - Pre-configured for local development and Railway deployment
+## The Problem It Solves
 
-## Quick Start
+AI agents are often stateless. They forget everything after an interaction. This makes building sophisticated, context-aware agents difficult.
 
-### Prerequisites
+`mem0` solves this by providing a memory layer. This API exposes that layer through a clean, secure, and scalable service. It's built for real-world use, not just as a demo.
 
-- Python 3.9+
-- Redis (for vector storage) or Chroma
-- LLM API access (Ollama Cloud via LiteLLM, Google Gemini, or OpenAI)
+## Getting Started
 
-### Installation
+You need Python 3.9+ and access to a Redis instance. You will also need an API key from an LLM provider like Google Gemini or OpenAI.
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd Mem0-Memory
-```
+1.  **Clone the repository and install dependencies:**
+    ```bash
+    git clone https://github.com/OctavianTocan/mem0-api.git
+    cd mem0-api
+    pip install -r requirements.txt
+    ```
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+2.  **Configure your environment.** Copy the example `.env.example` file to `.env` and fill in the required values. At a minimum, you need to set `MEMORY_API_KEY`.
+    ```bash
+    cp .env.example .env
+    ```
 
-3. Create a `.env` file:
-```bash
-cp .env.example .env
-```
+3.  **Run the server.**
+    ```bash
+    ./start.sh
+    ```
+    The API will be available at `http://localhost:8000`.
 
-4. Configure your environment variables (see Configuration section)
+## How to Use It
 
-5. Start the server:
-```bash
-uvicorn mem0_api:app --host 0.0.0.0 --port 8000
-```
+All endpoints require an `X-API-Key` header for authentication. This key should match the `MEMORY_API_KEY` you set in your `.env` file.
 
-Or use the included startup script:
-```bash
-./start.sh
-```
+### Adding a Memory
 
-The API will be available at `http://localhost:8000`
+To store information, send a `POST` request to `/add_memory`. The `messages` field contains the content to be stored.
 
-API documentation: `http://localhost:8000/api/v1/docs`
-
-## API Endpoints
-
-All endpoints require an `X-API-Key` header for authentication.
-
-### Health Check
-```http
-GET /
-```
-Returns: `{"status": "ok"}`
-
-### Ping
-```http
-POST /ping
-```
-Returns: `{"status": "pong"}`
-
-### Add Memory
 ```http
 POST /add_memory
 Content-Type: application/json
-X-API-Key: your-api-key
+X-API-Key: your-secret-key
 
 {
   "messages": [
-    {"role": "user", "content": "I love pizza"},
-    {"role": "assistant", "content": "I'll remember that!"}
+    {"role": "user", "content": "The user's favorite food is pasta."}
   ],
-  "user_id": "user123",
-  "agent_id": "agent456",
-  "infer": true,
-  "metadata": {"source": "conversation"},
-  "prompt": "Extract key facts about user preferences"
+  "user_id": "user-123"
 }
 ```
 
-**Parameters:**
-- `messages` (required): List of message objects with `role` and `content`
-- `user_id` (optional): User identifier
-- `agent_id` (optional): Agent identifier
-- `infer` (optional, default: true): Whether to use LLM to infer additional memories
-- `metadata` (optional): Custom metadata dictionary
-- `prompt` (optional): Custom prompt to guide memory inference
+The `infer` parameter, which is on by default, uses the LLM to extract and store the core facts from the content.
 
-**Returns:**
-```json
-{
-  "status": "memory added",
-  "result": {
-    "results": [
-      {"id": "mem_abc123", "memory": "User loves pizza", ...}
-    ]
-  }
-}
-```
+### Searching Memories
 
-### Search Memory
+To retrieve information, send a `POST` request to `/search_memory`. The API performs a semantic search, so you can ask questions in natural language.
+
 ```http
 POST /search_memory
 Content-Type: application/json
-X-API-Key: your-api-key
+X-API-Key: your-secret-key
 
 {
-  "query": "What food does the user like?",
-  "user_id": "user123",
-  "agent_id": "agent456"
+  "query": "What is the user's favorite food?",
+  "user_id": "user-123"
 }
 ```
 
-**Parameters:**
-- `query` (required): Search query string
-- `user_id` (optional): Filter by user ID
-- `agent_id` (optional): Filter by agent ID
+The API will return the most relevant memories it has stored for that user.
 
-**Returns:**
-```json
-{
-  "results": [
-    {
-      "id": "mem_abc123",
-      "memory": "User loves pizza",
-      "score": 0.95,
-      ...
-    }
-  ]
-}
-```
+## Limitations
 
-### Get All Memories
-```http
-POST /get_all_memories
-Content-Type: application/json
-X-API-Key: your-api-key
+This API is a starting point. It provides core memory functions but is not a complete agent framework. It manages memory, not agent state or decision-making.
 
-{
-  "user_id": "user123"
-}
-```
+The quality of the semantic search depends heavily on the underlying embedding model. The default models are a good starting point, but you may need to experiment to find the best fit for your use case.
 
-**Parameters:**
-- `user_id` (required): User identifier
+## Project Roadmap
 
-**Returns:**
-```json
-{
-  "status": "success",
-  "memories": [...],
-  "count": 42
-}
-```
+This project is under active development. Future plans include:
+*   Support for more vector database backends.
+*   More sophisticated memory analysis and summarization features.
+*   Integration with popular agent frameworks.
 
-### Delete All Memories
-```http
-POST /delete_all_memories
-X-API-Key: your-api-key
-```
+Contributions are welcome.
 
-**Returns:**
-```json
-{
-  "status": "memory deleted"
-}
-```
+## Project Information
 
-## Configuration
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
-Configure the API using environment variables in `.env`:
-
-### Required
-
-```bash
-# API Authentication
-MEMORY_API_KEY=your-secret-api-key
-```
-
-### Optional
-
-```bash
-# LLM Configuration
-LLM_PROVIDER=litellm                         # Options: litellm, gemini, openai (default: gemini)
-LLM_MODEL=kimi-k2:1t-cloud                   # Model name (default: models/gemini-2.5-flash)
-LLM_MAX_TOKENS=2000                          # Default: 2000
-
-# Ollama Cloud Configuration (via LiteLLM)
-OLLAMA_API_BASE=https://api.ollama.ai        # Ollama cloud endpoint
-OLLAMA_API_KEY=your-ollama-api-key           # Ollama cloud API key (required)
-
-# Embedder Configuration
-EMBEDDER_PROVIDER=litellm                    # Options: litellm, gemini, openai (default: gemini)
-EMBEDDER_MODEL=nomic-embed-text              # Embedding model (default: models/text-embedding-004)
-EMBEDDER_DIMENSIONS=768                      # Default: 768
-
-# Database Configuration
-DATABASE_PROVIDER=redis                      # Options: redis, chroma (default: redis)
-REDIS_URL=redis://localhost:6379             # Required if using Redis
-DB_COLLECTION_NAME=mem0                      # Default: mem0
-
-# Search Configuration
-MEMORY_SEARCH_LIMIT=100                      # Default: 100
-
-# CORS Configuration
-ENVIRONMENT=development                      # Set to 'production' to disable localhost CORS
-CORS_ORIGINS=https://example.com             # Comma-separated list of allowed origins
-
-# Railway Deployment (automatically detected)
-RAILWAY_STATIC_URL=your-app.railway.app
-RAILWAY_PUBLIC_DOMAIN=your-domain.com
-```
-
-## Example Usage
-
-### Python Client
-
-```python
-import requests
-
-API_URL = "http://localhost:8000"
-API_KEY = "your-api-key"
-
-headers = {"X-API-Key": API_KEY}
-
-# Add a memory
-response = requests.post(
-    f"{API_URL}/add_memory",
-    json={
-        "messages": [
-            {"role": "user", "content": "My favorite color is blue"}
-        ],
-        "user_id": "user123",
-        "infer": True
-    },
-    headers=headers
-)
-print(response.json())
-
-# Search memories
-response = requests.post(
-    f"{API_URL}/search_memory",
-    json={
-        "query": "What is the user's favorite color?",
-        "user_id": "user123"
-    },
-    headers=headers
-)
-print(response.json())
-
-# Get all memories
-response = requests.post(
-    f"{API_URL}/get_all_memories",
-    json={"user_id": "user123"},
-    headers=headers
-)
-print(response.json())
-```
-
-### cURL
-
-```bash
-# Add memory
-curl -X POST "http://localhost:8000/add_memory" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "I work as a software engineer"}],
-    "user_id": "user123",
-    "infer": true
-  }'
-
-# Search memories
-curl -X POST "http://localhost:8000/search_memory" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What does the user do for work?",
-    "user_id": "user123"
-  }'
-```
-
-## Architecture
-
-```
-FastAPI Application
-    ↓
-Mem0 Framework (v1.0.0)
-    ↓
-├─ LiteLLM (Unified LLM Interface)
-│   └─ Ollama Cloud / Gemini / OpenAI
-├─ Embeddings (via LiteLLM)
-└─ Vector Database (Redis/Chroma)
-```
-
-## Deployment
-
-### Railway
-
-The API is pre-configured for Railway deployment:
-
-1. Connect your GitHub repository to Railway
-2. Add environment variables in Railway dashboard
-3. Deploy - Railway will automatically use `start.sh`
-
-### Docker
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-
-CMD ["uvicorn", "mem0_api:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Build and run:
-```bash
-docker build -t mem0-api .
-docker run -p 8000:8000 --env-file .env mem0-api
-```
-
-## Development
-
-### Project Structure
-
-```
-.
-├── mem0_api.py        # FastAPI application and endpoints
-├── models.py          # Pydantic request/response models
-├── requirements.txt   # Python dependencies
-├── start.sh          # Startup script
-└── README.md         # This file
-```
-
-### Testing
-
-Access the interactive API documentation at:
-- Swagger UI: `http://localhost:8000/api/v1/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-## Tech Stack
-
-- **FastAPI** - Modern Python web framework
-- **Mem0** (v1.0.0) - Memory management framework
-- **LiteLLM** - Unified interface for LLM providers
-- **Ollama Cloud/Gemini/OpenAI** - LLM and embeddings providers
-- **Redis/Chroma** - Vector database backends
-- **Pydantic** - Data validation
-
-## Troubleshooting
-
-### Redis Connection Issues
-Ensure Redis is running:
-```bash
-redis-cli ping  # Should return PONG
-```
-
-### Authentication Errors
-Verify your `X-API-Key` header matches `MEMORY_API_KEY` in `.env`
-
-### Memory Inference Not Working
-Check that your LLM provider API key/endpoint is properly configured:
-- **Ollama Cloud (via LiteLLM)**: Verify `OLLAMA_API_BASE` and `OLLAMA_API_KEY` are set correctly
-- **Gemini**: Check your Google Gemini API key and quota
-- **OpenAI**: Verify your OpenAI API key is valid
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
-## Support
-
-For issues and questions:
-- Open a GitHub issue
-- Check [Mem0 documentation](https://docs.mem0.ai)
+All contributors are expected to follow our `CODE_OF_CONDUCT.md`. Please read it before participating. Our `docs/CODING_GUIDELINES.md` outlines the standards for code contributions.
